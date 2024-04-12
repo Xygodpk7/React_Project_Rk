@@ -1,0 +1,141 @@
+// Define MongoDB datasource named 'db' with the specified URL from the environment variable
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+// Define generator configuration for Prisma Client
+generator client {
+    provider = "prisma-client-js"
+}
+
+// Model representing an Account in the database
+model Account {
+    // Unique identifier for the account, auto-generated MongoDB ObjectId
+    id                String  @id @default(auto()) @map("_id") @db.ObjectId
+    // Reference to the corresponding User using MongoDB's ObjectId
+    userId            String  @db.ObjectId
+    // Type of the account (e.g., Google, credentials)
+    type              String
+    // Provider of the account (e.g., Google)
+    provider          String
+    // Unique identifier provided by the account provider
+    providerAccountId String
+    // Refresh token for the account
+    refresh_token     String? @db.String
+    // Access token for the account
+    access_token      String? @db.String
+    // Expiry timestamp for the access token
+    expires_at        Int?
+    // Type of the token (e.g., Bearer)
+    token_type        String?
+    // Scope of the token
+    scope             String?
+    // JWT token associated with the account
+    id_token          String? @db.String
+    // Session state associated with the account
+    session_state     String?
+
+    // Define a relation with the User model using the userId field
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    // Ensure uniqueness based on the combination of provider and providerAccountId
+    @@unique([provider, providerAccountId])
+}
+
+// Model representing a User in the database
+model User {
+    // Unique identifier for the user, auto-generated MongoDB ObjectId
+    id             String    @id @default(auto()) @map("_id") @db.ObjectId
+    // User's name
+    name           String?
+    // User's email (must be unique)
+    email          String?   @unique
+    // Timestamp when the email was verified
+    emailVerified  DateTime?
+    // URL for the user's image
+    image          String?
+    // Hashed password for user authentication
+    hashedPassword String?
+    // Timestamp when the user was created
+    createdAt      DateTime  @default(now())
+    // Timestamp when the user was last updated
+    updatedAt      DateTime  @updatedAt
+    // Role of the user, default is USER
+    role           Role      @default(USER)
+    // Define a relation with the Account model using the accounts field
+    accounts       Account[]
+    orders         Order[]
+    Review         Review[]
+}
+
+model Product {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    name        String
+    description String
+    price       Float
+    brand       String
+    category    String
+    inStock     Boolean
+    images      Image[]
+    reviews     Review[]
+}
+
+model Review {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId      String   @db.ObjectId
+    productId   String?  @db.ObjectId
+    rating      Int
+    comment     String
+    createdDate DateTime @default(now())
+
+    product Product? @relation(fields: [productId], references: [id])
+    user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+    id              String            @id @default(auto()) @map("_id") @db.ObjectId
+    userId          String            @db.ObjectId
+    amount          Float
+    currency        String
+    status          String
+    deliveryStatus  String
+    createDate      DateTime          @default(now())
+    paymentIntentId String            @unique
+    products        CartProductType[]
+    address         Address?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+type CartProductType {
+    id          String
+    name        String
+    description String
+    category    String
+    brand       String
+    selectedImg Image
+    quantity    Int
+    price       Float
+}
+
+type Image {
+    color     String
+    colorCode String
+    image     String
+}
+
+type Address {
+    city        String
+    country     String
+    line1       String
+    line2       String
+    postal_code String
+    state       String
+}
+
+// Enum representing the role of a user (USER or ADMIN)
+enum Role {
+    USER
+    ADMIN
+}
